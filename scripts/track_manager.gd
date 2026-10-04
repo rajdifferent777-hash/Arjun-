@@ -79,7 +79,6 @@ func _spawn_obstacle(root: Node3D, lane: int, local_z: float) -> void:
 	mesh.material_override = _mat(Color(0.55, 0.12, 0.14))
 	obstacle.add_child(mesh)
 	obstacle.position = Vector3(LANE_X[lane], 0.0, local_z)
-	obstacle.player_hit.connect(_on_obstacle_hit)
 	root.add_child(obstacle)
 
 func _build_coins(root: Node3D) -> void:
@@ -113,8 +112,3 @@ func _on_coin_collected() -> void:
 	var game := get_parent()
 	if game.has_method("add_coin"):
 		game.add_coin()
-
-func _on_obstacle_hit() -> void:
-	var game := get_parent()
-	if game.has_method("player_hit"):
-		game.player_hit()
