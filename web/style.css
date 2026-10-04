@@ -1,5 +1,14 @@
 html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#07101c;touch-action:none}
 #game{position:fixed;inset:0}
 canvas{display:block;width:100%;height:100%}
-#hud{line-height:1.55;user-select:none}
-#over button{margin-top:16px;border:0;border-radius:14px;padding:14px 24px;font:700 18px system-ui;background:#fff;color:#111}
+#hud{position:fixed;top:0;left:0;right:0;padding:14px 16px;color:#fff;font:700 14px/1.5 system-ui,sans-serif;letter-spacing:.3px;text-shadow:0 2px 6px #000;pointer-events:none;user-select:none}
+#hud>div{margin-bottom:2px}
+#hud .chase{margin-top:5px}
+#overlay{position:fixed;inset:0;display:grid;place-items:center;background:linear-gradient(#06101dcc,#06101d99);color:#fff;text-align:center;font-family:system-ui,sans-serif;padding:24px;box-sizing:border-box}
+.panel{width:min(560px,92vw);padding:28px 22px;border:1px solid #ffffff22;border-radius:24px;background:#071522dd;box-shadow:0 20px 70px #0009;backdrop-filter:blur(8px)}
+.eyebrow{font-size:11px;letter-spacing:2px;opacity:.7;margin-bottom:8px}
+.panel h1{margin:0 0 12px;font-size:clamp(30px,8vw,54px);letter-spacing:1px}
+.panel p{margin:10px auto;max-width:480px;color:#d6e4eb;line-height:1.5;font-weight:500}
+.hero-name{margin:16px 0;color:#71ead7;font-weight:800;letter-spacing:1px}
+.panel button{margin-top:12px;border:0;border-radius:16px;padding:15px 24px;font:800 17px system-ui,sans-serif;background:#71ead7;color:#06131a;box-shadow:0 8px 25px #0005}
+.panel small{display:block;margin-top:15px;color:#a9bcc5}
