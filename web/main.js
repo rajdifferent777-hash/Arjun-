@@ -280,7 +280,7 @@ function frame(now){
       }
     }
 
-    while(nextSpawnZ>-180){
+    while(nextSpawnZ>-distance-180){
       spawnChunk(nextSpawnZ);
       nextSpawnZ-=30;
     }
