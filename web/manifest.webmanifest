@@ -1,0 +1,9 @@
+{
+  "name": "Skybound Relic",
+  "short_name": "Skybound",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#07101c",
+  "theme_color": "#07101c",
+  "orientation": "landscape-primary"
+}
