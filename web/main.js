@@ -3,10 +3,10 @@ import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.m
 const root=document.getElementById("game");
 const scene=new THREE.Scene();
 scene.background=new THREE.Color(0x07101c);
-scene.fog=new THREE.Fog(0x07101c,42,175);
+scene.fog=new THREE.Fog(0x07101c,45,190);
 
-const camera=new THREE.PerspectiveCamera(63,innerWidth/innerHeight,.1,260);
-camera.position.set(0,5.8,10);
+const camera=new THREE.PerspectiveCamera(62,innerWidth/innerHeight,.1,280);
+camera.position.set(0,5.7,10);
 
 const renderer=new THREE.WebGLRenderer({antialias:false,powerPreference:"high-performance"});
 renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));
@@ -14,386 +14,262 @@ renderer.setSize(innerWidth,innerHeight);
 renderer.outputColorSpace=THREE.SRGBColorSpace;
 root.appendChild(renderer.domElement);
 
-scene.add(new THREE.HemisphereLight(0xbfdcff,0x111923,2.0));
-const sun=new THREE.DirectionalLight(0xffefd2,2.4);
-sun.position.set(-15,24,10);
+scene.add(new THREE.HemisphereLight(0xbfdcff,0x101923,2.1));
+const sun=new THREE.DirectionalLight(0xffe6bd,2.7);
+sun.position.set(-20,28,12);
 scene.add(sun);
 
-const lanes=[-3,0,3];
-const PLAYER_Z=0;
-const BASE_SPEED=19;
-const objects=[];
-const scenery=[];
+const lanes=[-3,0,3], objects=[], scenery=[];
+const PLAYER_Z=0, BASE_SPEED=18;
 let lane=1,targetX=0,playerY=0,vy=0,slideTime=0;
 let distance=0,score=0,relics=0,chase=100,combo=0,comboTimer=0;
-let running=false,started=false,last=performance.now();
-let nextChunk=-30,landmarkDistance=0;
-let hits=0,hitCooldown=0,shake=0;
-let best=Number(localStorage.getItem("skybound_best")||0);
+let running=false,last=performance.now(),nextSegment=-28,hits=0,hitCooldown=0,shake=0;
+let zone=0,best=Number(localStorage.getItem("skybound_best")||0);
+const ZONES=[
+  {name:"THE BROKEN SKY",sub:"Ancient skyway",stone:0x263746,edge:0x536a72,accent:0xd9a94e},
+  {name:"THE CRYSTAL GARDENS",sub:"The living ruins",stone:0x203b43,edge:0x4b7774,accent:0x55e7d2},
+  {name:"THE HOLLOW FRONTIER",sub:"Where the city ends",stone:0x302b43,edge:0x71658e,accent:0xd879ff}
+];
+let currentZone=0;
 
-const MATS={
-  stone:new THREE.MeshStandardMaterial({color:0x263746,roughness:.9}),
-  stone2:new THREE.MeshStandardMaterial({color:0x354b57,roughness:.85}),
-  edge:new THREE.MeshStandardMaterial({color:0x536a72,roughness:.8}),
-  gold:new THREE.MeshStandardMaterial({color:0xd9a94e,metalness:.35,roughness:.45}),
-  teal:new THREE.MeshStandardMaterial({color:0x43d8c4,roughness:.55}),
-  dark:new THREE.MeshStandardMaterial({color:0x101c28,roughness:.8}),
-  red:new THREE.MeshStandardMaterial({color:0xf05c59,roughness:.7}),
-  amber:new THREE.MeshStandardMaterial({color:0xffc24d,roughness:.65}),
-  cyan:new THREE.MeshBasicMaterial({color:0x62e8ff}),
-  purple:new THREE.MeshBasicMaterial({color:0xd879ff})
+const M={
+ stone:new THREE.MeshStandardMaterial({color:0x263746,roughness:.9}),
+ edge:new THREE.MeshStandardMaterial({color:0x536a72,roughness:.8}),
+ dark:new THREE.MeshStandardMaterial({color:0x101923,roughness:.85}),
+ teal:new THREE.MeshStandardMaterial({color:0x43d8c4,roughness:.55}),
+ gold:new THREE.MeshStandardMaterial({color:0xd9a94e,metalness:.35,roughness:.45}),
+ red:new THREE.MeshStandardMaterial({color:0xf05c59,roughness:.7}),
+ amber:new THREE.MeshStandardMaterial({color:0xffc24d,roughness:.6}),
+ cyan:new THREE.MeshBasicMaterial({color:0x62e8ff}),
+ purple:new THREE.MeshBasicMaterial({color:0xd879ff}),
+ white:new THREE.MeshBasicMaterial({color:0xeaf7ff})
 };
-
-function box(w,h,d,material,x=0,y=0,z=0){
-  const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),material);
-  m.position.set(x,y,z);
-  return m;
+function box(w,h,d,mat,x=0,y=0,z=0){
+  const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat); m.position.set(x,y,z); return m;
+}
+function matFor(kind){
+  const z=ZONES[kind%ZONES.length];
+  return new THREE.MeshStandardMaterial({color:z.stone,roughness:.9});
+}
+function edgeFor(kind){
+  const z=ZONES[kind%ZONES.length];
+  return new THREE.MeshStandardMaterial({color:z.edge,roughness:.8});
+}
+function accentFor(kind){
+  const z=ZONES[kind%ZONES.length];
+  return new THREE.MeshStandardMaterial({color:z.accent,metalness:.25,roughness:.5});
 }
 
 function createHero(){
   const g=new THREE.Group();
-
-  const torso=box(1.25,1.35,.78,MATS.teal,0,1.65,0);
-  torso.scale.set(1,.95,1);
-  g.add(torso);
-
-  const chest=box(.72,.3,.08,MATS.gold,0,1.82,-.43);
-  g.add(chest);
-
-  const head=new THREE.Mesh(new THREE.SphereGeometry(.46,10,8),MATS.stone2);
-  head.position.set(0,2.65,0);
-  g.add(head);
-
-  const visor=box(.72,.22,.08,MATS.dark,0,2.68,-.43);
-  g.add(visor);
-
-  const scarf=box(1.05,.12,.9,MATS.red,0,2.25,.02);
-  g.add(scarf);
-
+  const torso=box(1.25,1.35,.78,M.teal,0,1.65,0); g.add(torso);
+  const chest=box(.72,.3,.08,M.gold,0,1.82,-.43); g.add(chest);
+  const head=new THREE.Mesh(new THREE.SphereGeometry(.46,10,8),new THREE.MeshStandardMaterial({color:0x617680,roughness:.8}));
+  head.position.set(0,2.65,0); g.add(head);
+  g.add(box(.72,.22,.08,M.dark,0,2.68,-.43));
+  const scarf=box(1.05,.12,.9,M.red,0,2.25,.02); g.add(scarf);
+  const arms=[],legs=[];
   for(const side of [-1,1]){
-    const arm=box(.32,1.15,.38,MATS.stone2,side*.82,1.68,0);
-    arm.rotation.z=side*.08;
-    g.add(arm);
-
-    const hand=new THREE.Mesh(new THREE.SphereGeometry(.18,7,6),MATS.gold);
-    hand.position.set(side*.82,1.08,0);
-    g.add(hand);
-
-    const leg=box(.42,1.15,.46,MATS.dark,side*.32,.55,0);
-    g.add(leg);
-
-    const boot=box(.5,.22,.72,MATS.gold,side*.32,.02,-.12);
-    g.add(boot);
+    const arm=box(.32,1.15,.38,new THREE.MeshStandardMaterial({color:0x617680}),side*.82,1.68,0);
+    g.add(arm); arms.push(arm);
+    const hand=new THREE.Mesh(new THREE.SphereGeometry(.18,7,6),M.gold);
+    hand.position.set(side*.82,1.08,0); g.add(hand);
+    const leg=box(.42,1.15,.46,M.dark,side*.32,.55,0); g.add(leg); legs.push(leg);
+    g.add(box(.5,.22,.72,M.gold,side*.32,.02,-.12));
   }
-
-  const relic=new THREE.Mesh(new THREE.OctahedronGeometry(.22),MATS.cyan);
-  relic.position.set(0,1.45,-.47);
-  g.add(relic);
-
-  const backpack=box(.9,1.0,.28,MATS.dark,0,1.65,.52);
-  g.add(backpack);
-
+  const relic=new THREE.Mesh(new THREE.OctahedronGeometry(.22),M.cyan);
+  relic.position.set(0,1.45,-.47); g.add(relic);
+  g.add(box(.9,1,.28,M.dark,0,1.65,.52));
   scene.add(g);
-  return {g,torso,legs:g.children.filter(c=>c.geometry instanceof THREE.BoxGeometry).slice(-4),relic};
+  return {g,torso,arms,legs,relic};
 }
-const hero=createHero();
-const player=hero.g;
+const hero=createHero(), player=hero.g;
 
-function addTrack(z,broken=false){
-  const g=new THREE.Group();
-  const base=box(10,.5,30,MATS.stone,0,-.32,0);
-  g.add(base);
+function addTrack(z,kind,brokenLane=-1){
+  const g=new THREE.Group(), stone=matFor(kind), edge=edgeFor(kind), accent=accentFor(kind);
+  const base=box(10,.5,28,stone,0,-.32,0); g.add(base);
+  for(const x of [-4.85,4.85]){
+    g.add(box(.28,.8,28,edge,x,.08,0));
+    for(let i=-11;i<=11;i+=4)g.add(box(.38,1.05,.3,edge,x,.43,i));
+  }
+  for(const x of [-1.5,1.5])g.add(box(.07,.035,27,accent,x,.03,0));
+  if(brokenLane>=0){
+    const gx=lanes[brokenLane];
+    g.add(box(2.7,.8,5,M.dark,gx,-.7,-7));
+    g.add(box(2.65,.08,.1,M.red,gx,.18,-7));
+  }
+  g.position.z=z; scene.add(g); objects.push({mesh:g,type:"track"});
+}
 
-  for(let x of [-4.85,4.85]){
-    const rail=box(.28,.75,30,MATS.edge,x,.05,0);
-    g.add(rail);
-    for(let i=-12;i<=12;i+=4){
-      const post=box(.38,1.1,.3,MATS.edge,x,.42,i);
-      g.add(post);
+function addSideArchitecture(z,kind,index){
+  const edge=edgeFor(kind), accent=accentFor(kind), stone=matFor(kind);
+  if(index%4===0){
+    const gate=new THREE.Group();
+    gate.add(box(1.6,7,1.6,stone,-7,3.5,0),box(1.6,7,1.6,stone,7,3.5,0));
+    gate.add(box(16,1.1,2,edge,0,7,0));
+    gate.add(box(7.4,4.6,.55,M.dark,0,3.2,-.1));
+    const ring=new THREE.Mesh(new THREE.TorusGeometry(1.15,.18,8,18),accent);
+    ring.rotation.x=Math.PI/2; ring.position.set(0,5.2,-.5); gate.add(ring);
+    gate.position.z=z-10; scene.add(gate); scenery.push(gate);
+  }else{
+    for(const side of [-1,1]){
+      const h=4+((index*7+side+kind)%3);
+      const p=new THREE.Group();
+      const cyl=new THREE.Mesh(new THREE.CylinderGeometry(.62,.82,h,7),stone);
+      cyl.position.y=h/2; p.add(cyl); p.add(box(1.4,.28,1.4,accent,0,h,0));
+      p.position.set(side*7,0,z-(side<0?5:14)); scene.add(p); scenery.push(p);
     }
   }
-
-  for(const x of [-1.5,1.5]){
-    const line=box(.06,.035,29,MATS.gold,x,.02,0);
-    line.material.opacity=.45;
-    line.material.transparent=true;
-    g.add(line);
+  if(kind===1 && index%2===0){
+    for(const x of [-6.4,6.4]){
+      const c=new THREE.Mesh(new THREE.OctahedronGeometry(.72),M.cyan);
+      c.position.set(x,1.2,z-7); c.rotation.z=.4; scene.add(c); scenery.push(c);
+    }
   }
-
-  if(broken){
-    const gap=box(9.5,.7,5,MATS.dark,0,-.65,-8);
-    g.add(gap);
-    const warning=box(8,.08,.08,MATS.red,0,.15,-8);
-    g.add(warning);
+  if(kind===2 && index%3===0){
+    for(const x of [-6.8,6.8]){
+      const orb=new THREE.Mesh(new THREE.SphereGeometry(.32,8,8),M.purple);
+      orb.position.set(x,4.2,z-9); scene.add(orb); scenery.push(orb);
+    }
   }
-
-  g.position.z=z;
-  scene.add(g);
-  objects.push({mesh:g,type:"track"});
 }
 
-function addTorch(x,z){
+function addRouteMarker(x,z,label,kind){
   const g=new THREE.Group();
-  const stem=box(.14,1.7,.14,MATS.dark,0,.85,0);
-  g.add(stem);
-  const flame=new THREE.Mesh(new THREE.OctahedronGeometry(.28),MATS.amber);
-  flame.position.y=1.85;
-  g.add(flame);
-  g.position.set(x,0,z);
-  scene.add(g);
-  scenery.push(g);
+  g.add(box(.08,1.1,.08,accentFor(kind),0,.55,0));
+  g.add(box(.9,.08,.08,accentFor(kind),0,1.05,0));
+  const arrow=box(.35,.08,.08,accentFor(kind),.2,.92,0);
+  arrow.rotation.z=-.55; g.add(arrow);
+  g.position.set(x,0,z); scene.add(g); scenery.push(g);
 }
 
-function addTemple(z,scale=1){
-  const g=new THREE.Group();
-
-  const left=box(1.5,7,1.5,MATS.stone2,-7,3.5,0);
-  const right=box(1.5,7,1.5,MATS.stone2,7,3.5,0);
-  g.add(left,right);
-
-  const roof=box(16,1.1,2.0,MATS.edge,0,7,0);
-  g.add(roof);
-
-  const arch=box(7.5,4.8,.65,MATS.dark,0,3.3,-.1);
-  g.add(arch);
-
-  const emblem=new THREE.Mesh(new THREE.TorusGeometry(1.1,.18,8,18),MATS.gold);
-  emblem.rotation.x=Math.PI/2;
-  emblem.position.set(0,5.2,-.48);
-  g.add(emblem);
-
-  for(const x of [-5.5,5.5])addTorch(x,z-.8);
-
-  g.position.z=z;
-  g.scale.setScalar(scale);
-  scene.add(g);
-  scenery.push(g);
-}
-
-function addPillar(x,z,h=5){
-  const g=new THREE.Group();
-  const p=new THREE.Mesh(new THREE.CylinderGeometry(.62,.82,h,7),MATS.stone2);
-  p.position.y=h/2;
-  g.add(p);
-  const cap=box(1.35,.28,1.35,MATS.gold,0,h,0);
-  g.add(cap);
-  g.position.set(x,0,z);
-  scene.add(g);
-  scenery.push(g);
-}
-
-function addCrystal(x,z){
-  const c=new THREE.Mesh(new THREE.OctahedronGeometry(.7),MATS.cyan);
-  c.position.set(x,1.15,z);
-  c.rotation.z=.4;
-  scene.add(c);
-  scenery.push(c);
-}
-
-function addObstacle(x,z,kind){
-  let g=new THREE.Group();
+function addObstacle(x,z,kind,zoneKind){
+  const g=new THREE.Group(), accent=accentFor(zoneKind);
   if(kind==="wall"){
-    g.add(box(2.25,2.7,1.15,MATS.red,0,1.35,0));
-    g.add(box(1.65,.22,1.3,MATS.gold,0,2.1,-.02));
-    g.userData.label="JUMP";
+    g.add(box(2.25,2.7,1.15,M.red,0,1.35,0),box(1.65,.22,1.3,accent,0,2.1,-.02));
+    g.userData.action="JUMP";
   }else if(kind==="beam"){
-    g.add(box(2.5,.62,1.15,MATS.amber,0,2.15,0));
-    g.add(box(.22,2.15,.9,MATS.stone2,-1.05,1.05,0));
-    g.add(box(.22,2.15,.9,MATS.stone2,1.05,1.05,0));
-    g.userData.label="SLIDE";
+    g.add(box(2.5,.62,1.15,M.amber,0,2.15,0),box(.22,2.15,.9,edgeFor(zoneKind),-1.05,1.05,0),box(.22,2.15,.9,edgeFor(zoneKind),1.05,1.05,0));
+    g.userData.action="SLIDE";
   }else{
-    g.add(box(2.0,1.25,1.3,MATS.stone2,0,.62,0));
-    g.add(box(2.25,.18,1.45,MATS.gold,0,1.2,0));
-    g.userData.label="JUMP";
+    g.add(box(2,1.25,1.3,edgeFor(zoneKind),0,.62,0),box(2.25,.18,1.45,accent,0,1.2,0));
+    g.userData.action="JUMP";
   }
-  g.position.set(x,0,z);
-  g.userData.kind=kind;
-  g.userData.hit=false;
-  scene.add(g);
-  objects.push({mesh:g,type:"obstacle"});
+  g.position.set(x,0,z); g.userData.kind=kind; g.userData.hit=false;
+  scene.add(g); objects.push({mesh:g,type:"obstacle"});
+  addRouteMarker(x,z-.9,kind,zoneKind);
 }
-
 function addRelic(x,z,big=false){
-  const m=new THREE.Mesh(big?new THREE.OctahedronGeometry(.55):new THREE.TorusGeometry(.38,.12,8,18),big?MATS.gold:MATS.cyan);
-  m.position.set(x,big?1.5:1.3,z);
-  m.rotation.x=Math.PI/2;
-  m.userData.big=big;
-  scene.add(m);
-  objects.push({mesh:m,type:"relic"});
+  const m=new THREE.Mesh(big?new THREE.OctahedronGeometry(.55):new THREE.TorusGeometry(.38,.12,8,18),big?M.gold:M.cyan);
+  m.position.set(x,big?1.5:1.25,z); m.rotation.x=Math.PI/2; scene.add(m);
+  objects.push({mesh:m,type:"relic",big});
 }
-
 function addPower(x,z,type){
   const colors={shield:0x62e8ff,magnet:0xe56cff,boost:0xff9c42};
-  const m=new THREE.Mesh(new THREE.OctahedronGeometry(.48),new THREE.MeshBasicMaterial({color:colors[type]}));
-  m.position.set(x,1.5,z);
-  m.userData.power=type;
-  scene.add(m);
-  objects.push({mesh:m,type:"power"});
+  const m=new THREE.Mesh(new THREE.OctahedronGeometry(.5),new THREE.MeshBasicMaterial({color:colors[type]}));
+  m.position.set(x,1.5,z); m.userData.power=type; scene.add(m); objects.push({mesh:m,type:"power"});
 }
 
-function spawnChunk(z,index){
-  const landmark=index%8===0;
-  addTrack(z,index%11===7);
-  if(landmark)addTemple(z-12,1);
-  else{
-    addPillar(-7,z-5,4+Math.random()*3);
-    addPillar(7,z-15,4+Math.random()*3);
-    if(Math.random()<.65)addCrystal(Math.random()<.5?-6.2:6.2,z-9);
-  }
+function spawnSegment(z,index){
+  const kind=Math.floor(index/9)%3;
+  const broken=(index%10===7)?Math.floor(Math.random()*3):-1;
+  addTrack(z,kind,broken);
+  addSideArchitecture(z,kind,index);
 
   const safe=Math.floor(Math.random()*3);
-  const pattern=Math.floor(Math.random()*5);
-
-  if(pattern===0){
-    addObstacle(lanes[(safe+1)%3],z-4,"wall");
-  }else if(pattern===1){
-    addObstacle(lanes[(safe+2)%3],z-4,"beam");
-  }else if(pattern===2){
-    addObstacle(lanes[(safe+1)%3],z-4,"wall");
-    addObstacle(lanes[(safe+2)%3],z-11,"low");
+  const pattern=index%6;
+  if(pattern===0)addObstacle(lanes[(safe+1)%3],z-5,"wall",kind);
+  else if(pattern===1)addObstacle(lanes[(safe+2)%3],z-5,"beam",kind);
+  else if(pattern===2){
+    addObstacle(lanes[(safe+1)%3],z-5,"wall",kind);
+    addObstacle(lanes[(safe+2)%3],z-12,"low",kind);
   }else if(pattern===3){
-    addObstacle(lanes[(safe+1)%3],z-4,"wall");
-    addObstacle(lanes[(safe+2)%3],z-4,"wall");
+    addObstacle(lanes[(safe+1)%3],z-5,"wall",kind);
+    addObstacle(lanes[(safe+2)%3],z-5,"wall",kind);
+  }else if(pattern===4){
+    addObstacle(lanes[(safe+1)%3],z-5,"low",kind);
+    addObstacle(lanes[(safe+2)%3],z-12,"beam",kind);
   }else{
-    addObstacle(lanes[(safe+1)%3],z-4,"low");
-    addObstacle(lanes[(safe+2)%3],z-10,"beam");
+    addObstacle(lanes[(safe+1)%3],z-5,"beam",kind);
+    addObstacle(lanes[(safe+2)%3],z-12,"wall",kind);
   }
-
-  for(let i=0;i<7;i++)addRelic(lanes[safe],z-2-i*2.2);
-  if(Math.random()<.22)addRelic(lanes[(safe+2)%3],z-12,true);
-  if(Math.random()<.16)addPower(lanes[safe],z-17,["shield","magnet","boost"][Math.floor(Math.random()*3)]);
+  for(let i=0;i<7;i++)addRelic(lanes[safe],z-2-i*2.25);
+  if(index%7===0)addRelic(lanes[(safe+2)%3],z-14,true);
+  if(index%8===4)addPower(lanes[safe],z-18,["shield","magnet","boost"][index%3]);
 }
 
 function clearWorld(){
   while(objects.length)scene.remove(objects.pop().mesh);
   while(scenery.length)scene.remove(scenery.pop());
 }
-
 function buildWorld(){
-  clearWorld();
-  nextChunk=-30;
-  for(let i=0;i<12;i++){spawnChunk(nextChunk,i);nextChunk-=30;}
+  clearWorld(); nextSegment=-28;
+  for(let i=0;i<17;i++){spawnSegment(nextSegment,i);nextSegment-=28;}
 }
 
 function storyStart(){
-  const old=document.getElementById("overlay");
-  if(old)old.remove();
-  const el=document.createElement("div");
-  el.id="overlay";
-  el.innerHTML='<div class="story"><div class="sigil">✦</div><div class="eyebrow">CHAPTER I · THE BROKEN SKY</div><h1>SKYBOUND RELIC</h1><p>For centuries, the Aether Beacon kept the ancient city alive. Tonight it has gone dark.</p><p>Kael carries the last living Relic across the ruined skyway. Behind him, <b>the Hollow</b> is waking.</p><div class="hero-card"><b>KAEL</b><span>Relic Runner · Keeper of the Aether</span></div><button id="startBtn">ENTER THE SKYWAY</button><small>Swipe left/right · swipe up to jump · swipe down to slide</small></div>';
-  root.appendChild(el);
-  document.getElementById("startBtn").onclick=startGame;
+  document.getElementById("overlay")?.remove();
+  const el=document.createElement("div"); el.id="overlay";
+  el.innerHTML='<div class="story"><div class="sigil">✦</div><div class="eyebrow">CHAPTER I · THE BROKEN SKY</div><h1>SKYBOUND RELIC</h1><p>The Aether Beacon has gone dark. Ancient skyways are breaking apart while a living force called <b>the Hollow</b> wakes beneath the city.</p><div class="chapter-row"><span>01</span><b>ESCAPE THE RUINS</b><small>Learn the skyway.</small></div><div class="chapter-row"><span>02</span><b>REACH THE GARDENS</b><small>Follow the living crystals.</small></div><div class="chapter-row"><span>03</span><b>FIND THE BEACON</b><small>Discover what the Hollow wants.</small></div><button id="startBtn">BEGIN THE JOURNEY</button><small>Swipe ← → to change lane · ↑ jump · ↓ slide</small></div>';
+  root.appendChild(el); document.getElementById("startBtn").onclick=startGame;
 }
-
 function gameOver(){
-  if(!running)return;
-  running=false;
-  best=Math.max(best,Math.floor(score));
-  localStorage.setItem("skybound_best",String(best));
-  const el=document.createElement("div");
-  el.id="overlay";
-  el.innerHTML='<div class="story"><div class="eyebrow">CHAPTER I · RUN FAILED</div><h1>THE HOLLOW CATCHES YOU</h1><p>You travelled <b>'+Math.floor(distance)+'m</b> and carried <b>'+relics+' relics</b>.</p><div class="result">SCORE '+Math.floor(score)+'<br>BEST '+best+'</div><button id="retryBtn">RUN THE SKYWAY AGAIN</button></div>';
-  root.appendChild(el);
-  document.getElementById("retryBtn").onclick=startGame;
+  if(!running)return; running=false;
+  best=Math.max(best,Math.floor(score)); localStorage.setItem("skybound_best",best);
+  const el=document.createElement("div"); el.id="overlay";
+  el.innerHTML='<div class="story"><div class="eyebrow">JOURNEY INTERRUPTED</div><h1>THE HOLLOW IS CLOSER</h1><p>Distance <b>'+Math.floor(distance)+'m</b> · Relics <b>'+relics+'</b></p><div class="result">SCORE '+Math.floor(score)+'<br>BEST '+best+'</div><button id="retryBtn">CONTINUE THE JOURNEY</button></div>';
+  root.appendChild(el); document.getElementById("retryBtn").onclick=startGame;
 }
-
 function startGame(){
   document.getElementById("overlay")?.remove();
-  lane=1;targetX=0;playerY=0;vy=0;slideTime=0;
-  distance=0;score=0;relics=0;chase=100;combo=0;comboTimer=0;
-  hits=0;hitCooldown=0;shake=0;
-  running=true;started=true;landmarkDistance=0;
-  buildWorld();
+  lane=1; targetX=0; playerY=0; vy=0; slideTime=0; distance=0; score=0; relics=0; chase=100; combo=0; comboTimer=0; hits=0; hitCooldown=0; shake=0; currentZone=0; running=true; buildWorld();
+}
+function move(dir){if(running){lane=Math.max(0,Math.min(2,lane+dir));targetX=lanes[lane];}}
+function jump(){if(running&&playerY<.05&&slideTime<=0){vy=11.5;}}
+function slide(){if(running&&playerY<.05){slideTime=.85;}}
+let sx=0,sy=0;
+addEventListener("touchstart",e=>{sx=e.changedTouches[0].clientX;sy=e.changedTouches[0].clientY},{passive:true});
+addEventListener("touchend",e=>{const dx=e.changedTouches[0].clientX-sx,dy=e.changedTouches[0].clientY-sy;if(Math.max(Math.abs(dx),Math.abs(dy))<30)return;if(Math.abs(dx)>Math.abs(dy))move(dx>0?1:-1);else dy<0?jump():slide();},{passive:true});
+addEventListener("keydown",e=>{if(e.key==="ArrowLeft"||e.key==="a")move(-1);if(e.key==="ArrowRight"||e.key==="d")move(1);if(e.key==="ArrowUp"||e.key==="w"||e.key===" ")jump();if(e.key==="ArrowDown"||e.key==="s")slide();});
+
+function hitObstacle(o){
+  if(hitCooldown>0||o.mesh.userData.hit)return;
+  const kind=o.mesh.userData.kind;
+  const safe=(kind==="beam"&&slideTime>0)||(kind!=="beam"&&playerY>1.05);
+  if(safe){score+=90;combo=Math.min(12,combo+1);comboTimer=2;return;}
+  o.mesh.userData.hit=true; hitCooldown=1.1; hits++; combo=0; chase-=50; shake=.55;
+  const flash=document.createElement("div"); flash.className="hitflash"; root.appendChild(flash); setTimeout(()=>flash.remove(),180);
+  if(hits>=2||chase<=0)gameOver();
 }
 
 function hud(){
   let h=document.getElementById("hud");
   if(!h){h=document.createElement("div");h.id="hud";root.appendChild(h);}
-  h.innerHTML='<div class="topline"><span>SCORE <b>'+Math.floor(score)+'</b></span><span>RELICS <b>'+relics+'</b></span><span>BEST <b>'+best+'</b></span></div><div class="bar"><i style="width:'+Math.max(0,chase)+'%"></i><span>HOLLOW</span></div><div class="combo">COMBO ×'+Math.max(1,combo)+'</div>';
-}
-
-function move(dir){
-  if(!running)return;
-  lane=Math.max(0,Math.min(2,lane+dir));
-  targetX=lanes[lane];
-}
-
-function jump(){
-  if(running&&playerY<.04){vy=11.5;slideTime=0;}
-}
-
-function slide(){
-  if(running&&playerY<.05)slideTime=.8;
-}
-
-let sx=0,sy=0;
-addEventListener("touchstart",e=>{sx=e.changedTouches[0].clientX;sy=e.changedTouches[0].clientY},{passive:true});
-addEventListener("touchend",e=>{
-  const dx=e.changedTouches[0].clientX-sx,dy=e.changedTouches[0].clientY-sy;
-  if(Math.max(Math.abs(dx),Math.abs(dy))<30)return;
-  if(Math.abs(dx)>Math.abs(dy))move(dx>0?1:-1);else dy<0?jump():slide();
-},{passive:true});
-addEventListener("keydown",e=>{
-  if(e.key==="ArrowLeft"||e.key==="a")move(-1);
-  if(e.key==="ArrowRight"||e.key==="d")move(1);
-  if(e.key==="ArrowUp"||e.key==="w"||e.key===" ")jump();
-  if(e.key==="ArrowDown"||e.key==="s")slide();
-});
-
-function hitObstacle(o){
-  if(hitCooldown>0||o.mesh.userData.hit)return;
-  const kind=o.mesh.userData.kind;
-  const jumpSafe=kind!=="beam"&&playerY>1.05;
-  const slideSafe=kind==="beam"&&slideTime>0;
-  if(jumpSafe||slideSafe){
-    score+=80;
-    combo=Math.min(12,combo+1);
-    comboTimer=2;
-    return;
-  }
-
-  o.mesh.userData.hit=true;
-  hitCooldown=1.1;
-  hits++;
-  combo=0;
-  chase-=48;
-  shake=.5;
-
-  const flash=document.createElement("div");
-  flash.className="hitflash";
-  root.appendChild(flash);
-  setTimeout(()=>flash.remove(),180);
-
-  if(hits>=2||chase<=0){
-    gameOver();
-  }
+  const z=ZONES[currentZone];
+  h.innerHTML='<div class="topline"><span>SCORE <b>'+Math.floor(score)+'</b></span><span>RELICS <b>'+relics+'</b></span><span>BEST <b>'+best+'</b></span></div><div class="zone"><b>'+z.name+'</b><small>'+z.sub+'</small></div><div class="bar"><i style="width:'+Math.max(0,chase)+'%"></i><span>HOLLOW</span></div><div class="combo">COMBO ×'+Math.max(1,combo)+'</div>';
 }
 
 function frame(now){
-  const dt=Math.min(.033,(now-last)/1000);
-  last=now;
-
+  const dt=Math.min(.033,(now-last)/1000); last=now;
   if(running){
-    const speed=BASE_SPEED+Math.min(6,distance/250);
-    distance+=speed*dt;
-    score+=speed*dt*(10+combo*.7);
-    chase=Math.min(100,chase+dt*1.0);
+    const speed=BASE_SPEED+Math.min(7,distance/220);
+    distance+=speed*dt; score+=speed*dt*(10+combo*.7); chase=Math.min(100,chase+dt*.9);
     hitCooldown=Math.max(0,hitCooldown-dt);
 
+    const newZone=Math.min(2,Math.floor(distance/250));
+    if(newZone!==currentZone){currentZone=newZone;scene.background=new THREE.Color([0x07101c,0x092226,0x151024][currentZone]);scene.fog.color=scene.background;}
     player.position.x+=(targetX-player.position.x)*Math.min(1,dt*14);
 
-    if(playerY>0||vy>0){
-      vy-=27*dt;
-      playerY=Math.max(0,playerY+vy*dt);
-      if(playerY===0)vy=0;
-    }
-    player.position.y=playerY;
+    if(playerY>0||vy>0){vy-=27*dt;playerY=Math.max(0,playerY+vy*dt);if(playerY===0)vy=0;}
     if(slideTime>0)slideTime-=dt;
 
-    hero.torso.scale.y=slideTime>0?.62:1;
+    const crouch=slideTime>0&&playerY<.1;
+    hero.g.scale.y+=(crouch?.66:1-hero.g.scale.y)*Math.min(1,dt*18);
+    player.position.y=playerY+(crouch?.35:0);
+    hero.torso.rotation.x+=(crouch?-.18:0-hero.torso.rotation.x)*Math.min(1,dt*14);
+    hero.legs.forEach((leg,i)=>{const run=Math.sin(distance*.9+i*Math.PI)*.42;leg.rotation.x=crouch?-.85:run;});
+    hero.arms.forEach((arm,i)=>{arm.rotation.x=crouch?(i?-1.05:-.8):Math.sin(distance*.9+i*Math.PI)*.45;});
     hero.relic.rotation.y+=dt*6;
-    hero.legs.forEach((leg,i)=>{leg.rotation.x=Math.sin(distance*.9+i*Math.PI)*.45;});
-
     if(comboTimer>0)comboTimer-=dt;else combo=0;
 
     for(const o of objects){
@@ -402,58 +278,28 @@ function frame(now){
     }
     for(const s of scenery)s.position.z+=speed*dt;
 
-    while(nextChunk>-distance-220){
-      spawnChunk(nextChunk,Math.floor(distance/30)+objects.length);
-      nextChunk-=30;
-    }
+    while(nextSegment>-distance-260){spawnSegment(nextSegment,Math.floor((distance+260)/28));nextSegment-=28;}
 
     for(const o of objects){
-      if(o.mesh.visible===false)continue;
-      const dz=Math.abs(o.mesh.position.z-PLAYER_Z);
+      if(!o.mesh.visible)continue;
+      const dz=Math.abs(o.mesh.position.z);
       const dx=Math.abs(o.mesh.position.x-player.position.x);
-
-      if(dz<1.15&&dx<1.25){
+      if(dz<1.15&&dx<1.22){
         if(o.type==="obstacle")hitObstacle(o);
-        else if(o.type==="relic"){
-          o.mesh.visible=false;
-          relics++;
-          combo=Math.min(12,combo+1);
-          comboTimer=2.2;
-          score+=100+combo*20;
-        }else if(o.type==="power"){
-          o.mesh.visible=false;
-          score+=250;
-          chase=Math.min(100,chase+18);
-        }
+        else if(o.type==="relic"){o.mesh.visible=false;relics++;combo=Math.min(12,combo+1);comboTimer=2.2;score+=100+combo*20;}
+        else if(o.type==="power"){o.mesh.visible=false;score+=250;chase=Math.min(100,chase+18);}
       }
     }
-
-    while(objects.length&&objects[0]?.mesh.position.z>25){
-      const old=objects.shift();
-      scene.remove(old.mesh);
-    }
+    while(objects.length&&objects[0].mesh.position.z>26)scene.remove(objects.shift().mesh);
 
     if(shake>0)shake-=dt;
-    const sx=shake>0?(Math.random()-.5)*shake:0;
-    const sy=shake>0?(Math.random()-.5)*shake:0;
-    camera.position.x+=(player.position.x-camera.position.x)*dt*5+sx;
-    camera.position.y=5.8+playerY*.2+sy;
-    camera.lookAt(player.position.x,1.35,-13);
-
+    const jx=shake>0?(Math.random()-.5)*shake:0,jy=shake>0?(Math.random()-.5)*shake:0;
+    camera.position.x+=(player.position.x-camera.position.x)*dt*5+jx;
+    camera.position.y=5.7+playerY*.2+jy;
+    camera.lookAt(player.position.x,1.3,-14);
     hud();
   }
-
-  renderer.render(scene,camera);
-  requestAnimationFrame(frame);
+  renderer.render(scene,camera); requestAnimationFrame(frame);
 }
-
-addEventListener("resize",()=>{
-  camera.aspect=innerWidth/innerHeight;
-  camera.updateProjectionMatrix();
-  renderer.setSize(innerWidth,innerHeight);
-});
-
-buildWorld();
-hud();
-storyStart();
-requestAnimationFrame(frame);
+addEventListener("resize",()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});
+buildWorld(); hud(); storyStart(); requestAnimationFrame(frame);
