@@ -22,3 +22,5 @@ canvas{display:block;width:100%;height:100%}
 .result{margin:17px auto;padding:12px;border-radius:12px;background:#0e202b;color:#71ead7;font-weight:800;line-height:1.8}
 .hitflash{position:fixed;inset:0;background:#ff334455;pointer-events:none;z-index:10;animation:flash .18s ease-out}
 @keyframes flash{from{opacity:1}to{opacity:0}}
+
+.world-tokens{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0}.world-token{border:1px solid #ffffff20;border-radius:16px;padding:14px;background:#0d1d28;color:#fff;text-align:left;font:700 14px system-ui}.world-token small{display:block;color:#9fb5bf;font-weight:500;margin-top:5px}.world-token.selected{border-color:#71ead7;box-shadow:0 0 0 2px #71ead722;background:#112c35}.mars-token.selected{background:#321c18}.moon-token.selected{background:#172235}@media(max-width:430px){.world-tokens{grid-template-columns:1fr}.story{padding:22px 16px}}
