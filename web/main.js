@@ -24,7 +24,7 @@ const PLAYER_Z=0, BASE_SPEED=18;
 let lane=1,targetX=0,playerY=0,vy=0,slideTime=0;
 let distance=0,score=0,relics=0,chase=100,combo=0,comboTimer=0;
 let running=false,last=performance.now(),nextSegment=-28,hits=0,hitCooldown=0,shake=0;
-let zone=0,best=Number(localStorage.getItem("skybound_best")||0);
+let zone=0,best=Number(localStorage.getItem("skybound_best")||0);\nlet worldMode=localStorage.getItem("runner_world")||"mars";\nconst WORLDS={mars:{name:"MARS",sub:"Red frontier city",sky:0x170b09,fog:0x170b09,gravity:27,speed:18},moon:{name:"MOON",sub:"Lunar colony circuit",sky:0x090d18,fog:0x090d18,gravity:15,speed:16}};
 const ZONES=[
   {name:"THE BROKEN SKY",sub:"Ancient skyway",stone:0x263746,edge:0x536a72,accent:0xd9a94e},
   {name:"THE CRYSTAL GARDENS",sub:"The living ruins",stone:0x203b43,edge:0x4b7774,accent:0x55e7d2},
@@ -207,11 +207,11 @@ function buildWorld(){
   for(let i=0;i<17;i++){spawnSegment(nextSegment,i);nextSegment-=28;}
 }
 
-function storyStart(){
+function applyWorld(){const w=WORLDS[worldMode];scene.background=new THREE.Color(w.sky);scene.fog.color=new THREE.Color(w.fog);}\nfunction storyStart(){
   document.getElementById("overlay")?.remove();
   const el=document.createElement("div"); el.id="overlay";
-  el.innerHTML='<div class="story"><div class="sigil">✦</div><div class="eyebrow">CHAPTER I · THE BROKEN SKY</div><h1>SKYBOUND RELIC</h1><p>The Aether Beacon has gone dark. Ancient skyways are breaking apart while a living force called <b>the Hollow</b> wakes beneath the city.</p><div class="chapter-row"><span>01</span><b>ESCAPE THE RUINS</b><small>Learn the skyway.</small></div><div class="chapter-row"><span>02</span><b>REACH THE GARDENS</b><small>Follow the living crystals.</small></div><div class="chapter-row"><span>03</span><b>FIND THE BEACON</b><small>Discover what the Hollow wants.</small></div><button id="startBtn">BEGIN THE JOURNEY</button><small>Swipe ← → to change lane · ↑ jump · ↓ slide</small></div>';
-  root.appendChild(el); document.getElementById("startBtn").onclick=startGame;
+  el.innerHTML='<div class="story"><div class="sigil">◉</div><div class="eyebrow">3.0 TEST LAB · HUMAN VS ALIEN</div><h1>RUN BEYOND EARTH</h1><p>Two worlds. One chase. Choose a world token and test readable roads, traffic, jump, slide and different gravity.</p><div class="world-tokens"><button class="world-token" data-world="mars"><b>🔴 MARS</b><small>Advanced alien city</small></button><button class="world-token" data-world="moon"><b>🌕 MOON</b><small>Lunar colony circuit</small></button></div><div class="chapter-row"><span>01</span><b>ESCAPE THE RUINS</b><small>Learn the skyway.</small></div><div class="chapter-row"><span>02</span><b>REACH THE GARDENS</b><small>Follow the living crystals.</small></div><div class="chapter-row"><span>03</span><b>FIND THE BEACON</b><small>Discover what the Hollow wants.</small></div><button id="startBtn">BEGIN THE JOURNEY</button><small>Swipe ← → to change lane · ↑ jump · ↓ slide</small></div>';
+  root.appendChild(el); document.querySelectorAll(".world-token").forEach(b=>b.onclick=()=>{worldMode=b.dataset.world;localStorage.setItem("runner_world",worldMode);document.querySelectorAll(".world-token").forEach(x=>x.classList.toggle("selected",x===b));applyWorld();});document.querySelector(`.world-token[data-world="${worldMode}"]`)?.classList.add("selected"); document.getElementById("startBtn").onclick=startGame;
 }
 function gameOver(){
   if(!running)return; running=false;
@@ -252,7 +252,7 @@ function hud(){
 function frame(now){
   const dt=Math.min(.033,(now-last)/1000); last=now;
   if(running){
-    const speed=BASE_SPEED+Math.min(7,distance/220);
+    const speed=WORLDS[worldMode].speed+Math.min(7,distance/220);
     distance+=speed*dt; score+=speed*dt*(10+combo*.7); chase=Math.min(100,chase+dt*.9);
     hitCooldown=Math.max(0,hitCooldown-dt);
 
@@ -260,11 +260,11 @@ function frame(now){
     if(newZone!==currentZone){currentZone=newZone;scene.background=new THREE.Color([0x07101c,0x092226,0x151024][currentZone]);scene.fog.color=scene.background;}
     player.position.x+=(targetX-player.position.x)*Math.min(1,dt*14);
 
-    if(playerY>0||vy>0){vy-=27*dt;playerY=Math.max(0,playerY+vy*dt);if(playerY===0)vy=0;}
+    if(playerY>0||vy>0){vy-=WORLDS[worldMode].gravity*dt;playerY=Math.max(0,playerY+vy*dt);if(playerY===0)vy=0;}
     if(slideTime>0)slideTime-=dt;
 
     const crouch=slideTime>0&&playerY<.1;
-    hero.g.scale.y+=(crouch?.66:1-hero.g.scale.y)*Math.min(1,dt*18);
+    const targetScaleY=crouch?.66:1; hero.g.scale.y+=(targetScaleY-hero.g.scale.y)*Math.min(1,dt*18);
     player.position.y=playerY+(crouch?.35:0);
     hero.torso.rotation.x+=(crouch?-.18:0-hero.torso.rotation.x)*Math.min(1,dt*14);
     hero.legs.forEach((leg,i)=>{const run=Math.sin(distance*.9+i*Math.PI)*.42;leg.rotation.x=crouch?-.85:run;});
@@ -302,4 +302,4 @@ function frame(now){
   renderer.render(scene,camera); requestAnimationFrame(frame);
 }
 addEventListener("resize",()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});
-buildWorld(); hud(); storyStart(); requestAnimationFrame(frame);
+applyWorld(); buildWorld(); hud(); storyStart(); requestAnimationFrame(frame);
