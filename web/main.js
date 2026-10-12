@@ -104,7 +104,9 @@ const pursuer=createAlienChaser();
 
 function addTrack(z,kind,brokenLane=-1){
   const g=new THREE.Group(), stone=matFor(kind), edge=edgeFor(kind), accent=accentFor(kind);
-  const base=box(10,.5,28,stone,0,-.32,0); g.add(base);
+  const roadMat=worldMode==="moon"?new THREE.MeshStandardMaterial({color:0x59616f,roughness:.95}):new THREE.MeshStandardMaterial({color:0x653b2c,roughness:.95});
+  const base=box(10,.5,28,roadMat,0,-.32,0); g.add(base);
+  for(let zz=-12;zz<=12;zz+=4)for(const x of [-3,0,3])g.add(box(.1,.025,1.5,worldMode==="moon"?M.white:M.amber,x,.0,zz));
   for(const x of [-4.85,4.85]){
     g.add(box(.28,.8,28,edge,x,.08,0));
     for(let i=-11;i<=11;i+=4)g.add(box(.38,1.05,.3,edge,x,.43,i));
