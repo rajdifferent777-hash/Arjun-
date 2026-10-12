@@ -257,7 +257,7 @@ function gameOver(){
 function startGame(){
   document.getElementById("overlay")?.remove();
   applyWorld();
-  lane=1; targetX=0; playerY=0; vy=0; slideTime=0; distance=0; score=0; relics=0; chase=100; combo=0; comboTimer=0; hits=0; hitCooldown=0; shake=0; currentZone=0; running=true; buildWorld();
+  pursuer.position.set(0,0,5.5); lane=1; targetX=0; playerY=0; vy=0; slideTime=0; distance=0; score=0; relics=0; chase=100; combo=0; comboTimer=0; hits=0; hitCooldown=0; shake=0; currentZone=0; running=true; buildWorld();
 }
 function move(dir){if(running){lane=Math.max(0,Math.min(2,lane+dir));targetX=lanes[lane];}}
 function jump(){if(running&&playerY<.05&&slideTime<=0){vy=11.5;}}
@@ -294,6 +294,10 @@ function frame(now){
     const newZone=Math.min(2,Math.floor(distance/250));
     if(newZone!==currentZone){currentZone=newZone;scene.background=new THREE.Color([0x07101c,0x092226,0x151024][currentZone]);scene.fog.color=scene.background;}
     player.position.x+=(targetX-player.position.x)*Math.min(1,dt*14);
+    pursuer.position.x+=(player.position.x-pursuer.position.x)*Math.min(1,dt*2.8);
+    pursuer.position.z=5.5-(100-chase)*.035;
+    pursuer.position.y=Math.abs(Math.sin(distance*.28))*.16;
+    pursuer.rotation.y=Math.sin(distance*.12)*.08;
 
     if(playerY>0||vy>0){vy-=WORLDS[worldMode].gravity*dt;playerY=Math.max(0,playerY+vy*dt);if(playerY===0)vy=0;}
     if(slideTime>0)slideTime-=dt;
