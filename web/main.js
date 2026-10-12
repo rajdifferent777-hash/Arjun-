@@ -24,7 +24,9 @@ const PLAYER_Z=0, BASE_SPEED=18;
 let lane=1,targetX=0,playerY=0,vy=0,slideTime=0;
 let distance=0,score=0,relics=0,chase=100,combo=0,comboTimer=0;
 let running=false,last=performance.now(),nextSegment=-28,hits=0,hitCooldown=0,shake=0;
-let zone=0,best=Number(localStorage.getItem("skybound_best")||0);\nlet worldMode=localStorage.getItem("runner_world")||"mars";\nconst WORLDS={mars:{name:"MARS",sub:"Red frontier city",sky:0x170b09,fog:0x170b09,gravity:27,speed:18},moon:{name:"MOON",sub:"Lunar colony circuit",sky:0x090d18,fog:0x090d18,gravity:15,speed:16}};
+let zone=0,best=Number(localStorage.getItem("skybound_best")||0);
+let worldMode=localStorage.getItem("runner_world")||"mars";
+const WORLDS={mars:{name:"MARS",sub:"Red frontier city",sky:0x170b09,fog:0x170b09,gravity:27,speed:18},moon:{name:"MOON",sub:"Lunar colony circuit",sky:0x090d18,fog:0x090d18,gravity:15,speed:16}};
 const ZONES=[
   {name:"THE BROKEN SKY",sub:"Ancient skyway",stone:0x263746,edge:0x536a72,accent:0xd9a94e},
   {name:"THE CRYSTAL GARDENS",sub:"The living ruins",stone:0x203b43,edge:0x4b7774,accent:0x55e7d2},
@@ -207,7 +209,8 @@ function buildWorld(){
   for(let i=0;i<17;i++){spawnSegment(nextSegment,i);nextSegment-=28;}
 }
 
-function applyWorld(){const w=WORLDS[worldMode];scene.background=new THREE.Color(w.sky);scene.fog.color=new THREE.Color(w.fog);}\nfunction storyStart(){
+function applyWorld(){const w=WORLDS[worldMode];scene.background=new THREE.Color(w.sky);scene.fog.color=new THREE.Color(w.fog);}
+function storyStart(){
   document.getElementById("overlay")?.remove();
   const el=document.createElement("div"); el.id="overlay";
   el.innerHTML='<div class="story"><div class="sigil">◉</div><div class="eyebrow">3.0 TEST LAB · HUMAN VS ALIEN</div><h1>RUN BEYOND EARTH</h1><p>Two worlds. One chase. Choose a world token and test readable roads, traffic, jump, slide and different gravity.</p><div class="world-tokens"><button class="world-token" data-world="mars"><b>🔴 MARS</b><small>Advanced alien city</small></button><button class="world-token" data-world="moon"><b>🌕 MOON</b><small>Lunar colony circuit</small></button></div><div class="chapter-row"><span>01</span><b>ESCAPE THE RUINS</b><small>Learn the skyway.</small></div><div class="chapter-row"><span>02</span><b>REACH THE GARDENS</b><small>Follow the living crystals.</small></div><div class="chapter-row"><span>03</span><b>FIND THE BEACON</b><small>Discover what the Hollow wants.</small></div><button id="startBtn">BEGIN THE JOURNEY</button><small>Swipe ← → to change lane · ↑ jump · ↓ slide</small></div>';
@@ -222,6 +225,7 @@ function gameOver(){
 }
 function startGame(){
   document.getElementById("overlay")?.remove();
+  applyWorld();
   lane=1; targetX=0; playerY=0; vy=0; slideTime=0; distance=0; score=0; relics=0; chase=100; combo=0; comboTimer=0; hits=0; hitCooldown=0; shake=0; currentZone=0; running=true; buildWorld();
 }
 function move(dir){if(running){lane=Math.max(0,Math.min(2,lane+dir));targetX=lanes[lane];}}
