@@ -207,6 +207,7 @@ function spawnSegment(z,index){
   const broken=(index%10===7)?Math.floor(Math.random()*3):-1;
   addTrack(z,kind,broken);
   addSideArchitecture(z,kind,index);
+  addWorldTraffic(z,index);
 
   const safe=Math.floor(Math.random()*3);
   const pattern=index%6;
