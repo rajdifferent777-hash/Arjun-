@@ -86,6 +86,21 @@ function createHero(){
   return {g,torso,arms,legs,relic};
 }
 const hero=createHero(), player=hero.g;
+function createAlienChaser(){
+ const g=new THREE.Group();
+ const skin=new THREE.MeshStandardMaterial({color:0x78e66c,roughness:.65});
+ const dark=new THREE.MeshStandardMaterial({color:0x18222b,roughness:.7});
+ const eye=new THREE.MeshBasicMaterial({color:0xff425d});
+ const head=new THREE.Mesh(new THREE.SphereGeometry(.62,12,10),skin);head.position.y=2.15;g.add(head);
+ g.add(box(.72,.8,.55,skin,0,1.35,0));
+ for(const s of [-1,1]){
+  const e=new THREE.Mesh(new THREE.SphereGeometry(.15,8,6),eye);e.position.set(s*.23,2.22,-.5);g.add(e);
+  g.add(box(.22,.9,.25,skin,s*.52,1.4,0));g.add(box(.24,.8,.3,dark,s*.22,.45,0));
+ }
+ for(const s of [-1,1]){const horn=new THREE.Mesh(new THREE.ConeGeometry(.19,.55,8),skin);horn.position.set(s*.35,2.72,.02);g.add(horn);}
+ g.position.set(0,0,5.5);scene.add(g);return g;
+}
+const pursuer=createAlienChaser();
 
 function addTrack(z,kind,brokenLane=-1){
   const g=new THREE.Group(), stone=matFor(kind), edge=edgeFor(kind), accent=accentFor(kind);
