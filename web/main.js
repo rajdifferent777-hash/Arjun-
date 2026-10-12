@@ -281,7 +281,7 @@ function hud(){
   let h=document.getElementById("hud");
   if(!h){h=document.createElement("div");h.id="hud";root.appendChild(h);}
   const z=ZONES[currentZone];
-  h.innerHTML='<div class="topline"><span>SCORE <b>'+Math.floor(score)+'</b></span><span>RELICS <b>'+relics+'</b></span><span>BEST <b>'+best+'</b></span></div><div class="zone"><b>'+z.name+'</b><small>'+z.sub+'</small></div><div class="bar"><i style="width:'+Math.max(0,chase)+'%"></i><span>HOLLOW</span></div><div class="combo">COMBO ×'+Math.max(1,combo)+'</div>';
+  h.innerHTML='<div class="topline"><span>WORLD <b>'+WORLDS[worldMode].name+'</b></span><span>DIST <b>'+Math.floor(distance)+'m</b></span><span>SCORE <b>'+Math.floor(score)+'</b></span><span>RELICS <b>'+relics+'</b></span></div><div class="zone"><b>'+WORLDS[worldMode].name+' · '+z.name+'</b><small>'+WORLDS[worldMode].sub+' · '+z.sub+'</small></div><div class="bar"><i style="width:'+Math.max(0,chase)+'%"></i><span>ALIEN DISTANCE</span></div><div class="combo">COMBO ×'+Math.max(1,combo)+'</div>';
 }
 
 function frame(now){
@@ -292,10 +292,10 @@ function frame(now){
     hitCooldown=Math.max(0,hitCooldown-dt);
 
     const newZone=Math.min(2,Math.floor(distance/250));
-    if(newZone!==currentZone){currentZone=newZone;scene.background=new THREE.Color([0x07101c,0x092226,0x151024][currentZone]);scene.fog.color=scene.background;}
+    if(newZone!==currentZone){currentZone=newZone;const w=WORLDS[worldMode];scene.background=new THREE.Color(w.sky);scene.fog.color=new THREE.Color(w.fog);}
     player.position.x+=(targetX-player.position.x)*Math.min(1,dt*14);
     pursuer.position.x+=(player.position.x-pursuer.position.x)*Math.min(1,dt*2.8);
-    pursuer.position.z=5.5-(100-chase)*.035;
+    pursuer.position.z=3.2-(100-chase)*.025;
     pursuer.position.y=Math.abs(Math.sin(distance*.28))*.16;
     pursuer.rotation.y=Math.sin(distance*.12)*.08;
 
