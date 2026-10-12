@@ -120,6 +120,19 @@ function addTrack(z,kind,brokenLane=-1){
   g.position.z=z; scene.add(g); objects.push({mesh:g,type:"track"});
 }
 
+function addWorldTraffic(z,index){
+ if(index%3!==0)return;
+ const x=lanes[(index+1)%3],g=new THREE.Group();
+ if(worldMode==="mars"){
+  g.add(box(2.1,.6,3.4,M.dark,0,.48,0));
+  g.add(box(1.45,.4,1.6,new THREE.MeshStandardMaterial({color:0x9c5d42,metalness:.25,roughness:.5}),0,.88,-.2));
+  g.add(box(1.8,.12,2.8,M.red,0,.6,-.05));
+ }else{
+  g.add(box(2,.48,2.8,M.dark,0,.45,0));g.add(box(1.3,.38,1.4,M.white,0,.8,0));
+  for(const side of [-1,1])for(const zz of [-.8,.8]){const wheel=new THREE.Mesh(new THREE.CylinderGeometry(.22,.22,.16,10),M.dark);wheel.rotation.z=Math.PI/2;wheel.position.set(side*.98,.24,zz);g.add(wheel);}
+ }
+ g.position.set(x,.05,z-10);scene.add(g);objects.push({mesh:g,type:"traffic"});
+}
 function addSideArchitecture(z,kind,index){
   const edge=edgeFor(kind), accent=accentFor(kind), stone=matFor(kind);
   if(index%4===0){
